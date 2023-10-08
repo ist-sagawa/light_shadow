@@ -1,0 +1,41 @@
+html, body
+  min-height: 100%
+  height: auto
+
+#app
+  canvas
+    position: fixed
+    top: 0
+    left: 0
+    width: 100vw
+    height: 100vh
+    z-index: 2
+
+  .audioContainer
+    display: flex
+    height: 100px
+    justify-content: center
+    align-items: center
+    gap: 1px
+    position: absolute
+    bottom: 40px
+    right: 0px
+    width: 70%
+    z-index: 20
+    
+
+  .box
+    flex: 1
+    height: 100%
+    scale: 1 0
+    background: white
+    transform-origin: left bottom
+
+  audio
+    position: absolute
+    bottom: 40px
+    left: 40px
+    z-index: 1
+    
+.tp-dfwv
+  z-index: 1000
