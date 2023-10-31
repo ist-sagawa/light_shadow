@@ -23,13 +23,9 @@ export const hasClass = (target, className) => {
 }
 
 export const addEvent = (target, type, callback, capture = false) => {
-  if (target.length) {
-    target.forEach((el) => {
-      el.addEventListener(type, callback, capture);
-    });
-    return;
-  } else if (typeof target === 'string') {
+  if (typeof target === 'string') {
     target = document.querySelectorAll(target);
+    console.log(target);
     target.forEach((el) => {
       el.addEventListener(type, callback, capture);
     });

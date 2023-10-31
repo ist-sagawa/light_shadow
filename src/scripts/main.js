@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import gsap from 'gsap';
 import { Pane } from 'tweakpane';
 import * as $ from './modules/Util'
+import * as Tone from 'tone'
 
 class Main {
   constructor() {
@@ -27,7 +28,6 @@ class Main {
       1000
     );
     this.camera.updateProjectionMatrix()
-
 
     this.params = {
       all: {
@@ -67,6 +67,8 @@ class Main {
       },
     }
 
+    window.params = this.params
+
     this.spotLights = [];
     this.target = new THREE.Mesh()
     this.back = new THREE.Mesh()
@@ -89,6 +91,10 @@ class Main {
       }
     })
 
+    $.addEvent(".start", 'click', () => {
+      this.loopStart()
+    })
+
 
   }
 
@@ -96,6 +102,7 @@ class Main {
     this.setupRenderer()
     this.setupCamera()
     this.renderer.setAnimationLoop(this.update.bind(this))
+    this.createSound()
     this.createLights()
     this.createTarget()
     this.createBack()
@@ -103,6 +110,82 @@ class Main {
     this.createControls()
     this.createTweakPane()
     // this.createCube(0, 0, 0, 1)
+  }
+
+  createSound() {
+    // エンベロープを作成
+    this.os1env = new Tone.AmplitudeEnvelope({
+      "attack": 0,
+      "decay": 0.5,
+      "sustain": 0.2,
+      "release": .8
+    }).toDestination();
+
+    this.os2env = new Tone.AmplitudeEnvelope({
+      "attack": 0,
+      "decay": 0.2,
+      "sustain": 0.2,
+      "release": .1
+    }).toDestination();
+
+    // オシレーターを作成してエンベロープに接続
+    this.oscillators = []
+    this.oscillators1 = new Tone.Oscillator(440, "square").connect(this.os1env)
+    this.oscillators2 = new Tone.Oscillator(430, "square").connect(this.os2env)
+
+    this.count = 0
+    this.lCount = 0
+    this.loop = new Tone.Loop((time) => {
+      // triggered every eighth note.
+      console.log(time)
+      // 各オシレーターの音を停止
+      this.oscillators1.stop(time);
+      this.oscillators2.stop(time);
+      if (this.count % 4 === 3) {
+        this.oscillators1.start(time);
+        this.os1env.triggerAttackRelease("8n", time);
+      } else {
+        this.oscillators2.start(time);
+        this.os2env.triggerAttackRelease("8n", time);
+      }
+
+      self = this
+
+      self.spotLights.forEach(function (light, index) {
+        self.params[`l${index}`].enabled = false
+      })
+      this.params[`l${this.lCount}`].enabled = true
+
+      if(this.count == 7){
+        this.count = 0
+      }else{
+        this.count++
+      }
+      if(this.lCount == 8){
+        this.lCount = 0
+      }else{
+        this.lCount++
+      }
+    }, "8n")
+    Tone.Transport.bpm.value = 120;
+    Tone.Transport.start();
+
+    this.loopStart()
+
+  }
+
+  loopStart() {
+    this.loop.start(0)
+  }
+
+  playSound1(time) {
+    this.oscillators1.start(time);
+    this.env.triggerAttackRelease(0.1);
+  }
+
+  playSound2(time) {
+    this.oscillators2.start(time);
+    this.env.triggerAttackRelease(0.1);
   }
 
   setupRenderer() {
@@ -144,8 +227,9 @@ class Main {
     const self = this
     self.pane.addBinding(self.params.all, 'enabled').on('change', (e) => {
       self.spotLights.forEach(function (light, index) {
-        e.value ? self.lightOn(light) : self.lightOff(light)
+        self.params[`l${index}`].enabled = e.value;
       });
+
     });
     self.pane.addBinding(self.params.all, 'intensity', { min: 0, max: 1000 }).on('change', (e) => {
       self.spotLights.forEach(function (light, index) {
@@ -176,7 +260,7 @@ class Main {
     this.spotLights.forEach(function (light, index) {
       var lightFolder = shadowFolder.addFolder({ title: 'Light ' + index });
       // console.log(self.params);
-      lightFolder.addBinding(self.params[`l${index}`], 'enabled').on('change', (e) => { e.value ? self.lightOn(light) : self.lightOff(light) });
+      lightFolder.addBinding(self.params[`l${index}`], 'enabled').on('change', (e) => { e.value ? self.lightOn(index) : self.lightOff(index) });
       // self.pane.addBinding(self.params, `l${index}.enabled`).on('change', (e) => { e.value ? self.lightOn(light) : self.lightOff(light) });
 
       // lightFolder.addBinding(light.shadow.camera, 'near', { min: 1, max: 10 }).on('change', self.updateLights);
@@ -199,19 +283,21 @@ class Main {
     // this.pane.addBinding(PARAMS, 'color');
   }
 
-  lightOn(light) {
+  lightOn(id) {
+    const light = this.spotLights[id];
     gsap.to(light, {
-      intensity: 100,
-      duration: .1,
-      ease: 'power4.inOut',
+      intensity: 200,
+      duration: .3,
+      ease: 'back.out',
     })
   }
 
-  lightOff(light) {
+  lightOff(id) {
+    const light = this.spotLights[id];
     gsap.to(light, {
       intensity: 0,
-      duration: .1,
-      ease: 'power4.inOut',
+      duration: .3,
+      ease: 'back.out',
     })
   }
 
@@ -226,7 +312,7 @@ class Main {
 
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < cols; j++) {
-        const spotLight = new THREE.SpotLight(0x0000ff, this.params.all.intensity);
+        const spotLight = new THREE.SpotLight(0xffffff, this.params.all.intensity);
 
         spotLight.castShadow = true;
         spotLight.angle = this.params.all.angle;
@@ -251,7 +337,7 @@ class Main {
     const xOffset = -(cols - 1) * spacing / 2;
     const yOffset = -(rows - 1) * spacing / 2;
     this.spotLights.forEach((light, index) => {
-      light.position.set(xOffset + index % cols * spacing, yOffset + Math.floor(index / rows) * spacing, 10);
+      light.position.set(-xOffset + index % cols * -spacing, yOffset + Math.floor(index / rows) * spacing, 10);
     })
   }
 
