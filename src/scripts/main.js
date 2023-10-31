@@ -6,6 +6,7 @@ import gsap from 'gsap';
 import { Pane } from 'tweakpane';
 import * as $ from './modules/Util'
 import * as Tone from 'tone'
+import logo from '/images/logomark.png'
 
 class Main {
   constructor() {
@@ -343,7 +344,7 @@ class Main {
 
 
   createTarget() {
-    const texture = new THREE.TextureLoader().load("../images/logomark.png");
+    const texture = new THREE.TextureLoader().load(logo);
     const geo = new THREE.PlaneGeometry(500, 500, 1, 1);
     const mat = new THREE.MeshStandardMaterial({
       map: texture,
