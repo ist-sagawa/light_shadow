@@ -7,7 +7,7 @@ export default defineConfig({
     outDir: '../dist',
     minify: false
   },
-  base: './',
+  base: '/light_shadow/',
   server: {
     host: true,
     port: 5000
