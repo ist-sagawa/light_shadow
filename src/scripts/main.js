@@ -31,6 +31,9 @@ class Main {
     this.camera.updateProjectionMatrix()
 
     this.params = {
+      sound: {
+        vol: -30,
+      },
       all: {
         enabled: true,
         intensity: 100,
@@ -93,6 +96,8 @@ class Main {
     })
 
     $.addEvent(".start", 'click', () => {
+      this.createSound()
+      Tone.Transport.start();
       this.loopStart()
     })
 
@@ -102,8 +107,7 @@ class Main {
   init() {
     this.setupRenderer()
     this.setupCamera()
-    this.renderer.setAnimationLoop(this.update.bind(this))
-    this.createSound()
+    // this.renderer.setAnimationLoop(this.update.bind(this))
     this.createLights()
     this.createTarget()
     this.createBack()
@@ -114,6 +118,7 @@ class Main {
   }
 
   createSound() {
+    
     // エンベロープを作成
     this.os1env = new Tone.AmplitudeEnvelope({
       "attack": 0,
@@ -129,10 +134,25 @@ class Main {
       "release": .1
     }).toDestination();
 
+
     // オシレーターを作成してエンベロープに接続
     this.oscillators = []
-    this.oscillators1 = new Tone.Oscillator(440, "square").connect(this.os1env)
-    this.oscillators2 = new Tone.Oscillator(430, "square").connect(this.os2env)
+    this.oscillators1 = new Tone.Oscillator(440, "sine").connect(this.os1env)
+    this.oscillators2 = new Tone.Oscillator(400, "sine").connect(this.os2env)
+
+    
+    this.melo0 = [
+      1,1,2,1,
+      1,1,2,1,
+      1,1,2,1,
+      2,1,2,2
+    ]
+
+    this.meloArr = [
+      this.melo0
+    ]
+
+    this.nowMeloNum = 0
 
     this.count = 0
     this.lCount = 0
@@ -142,12 +162,11 @@ class Main {
       // 各オシレーターの音を停止
       this.oscillators1.stop(time);
       this.oscillators2.stop(time);
-      if (this.count % 4 === 3) {
-        this.oscillators1.start(time);
-        this.os1env.triggerAttackRelease("8n", time);
-      } else {
-        this.oscillators2.start(time);
-        this.os2env.triggerAttackRelease("8n", time);
+
+      if(this.meloArr[this.nowMeloNum][this.count] == 1){
+        this.playSound1(time)
+      }else if(this.meloArr[this.nowMeloNum][this.count] == 2){
+        this.playSound2(time)
       }
 
       self = this
@@ -157,21 +176,22 @@ class Main {
       })
       this.params[`l${this.lCount}`].enabled = true
 
-      if(this.count == 7){
+      if(this.count == this.meloArr[this.nowMeloNum].length - 1){
         this.count = 0
       }else{
         this.count++
       }
+
       if(this.lCount == 8){
         this.lCount = 0
       }else{
         this.lCount++
       }
     }, "8n")
-    Tone.Transport.bpm.value = 120;
-    Tone.Transport.start();
+    Tone.Transport.bpm.value = 160;
+    Tone.Destination.volume.value = this.params.sound.vol;
 
-    this.loopStart()
+    // this.loopStart()
 
   }
 
@@ -181,12 +201,12 @@ class Main {
 
   playSound1(time) {
     this.oscillators1.start(time);
-    this.env.triggerAttackRelease(0.1);
+    this.os1env.triggerAttackRelease("8n", time);
   }
 
   playSound2(time) {
     this.oscillators2.start(time);
-    this.env.triggerAttackRelease(0.1);
+    this.os2env.triggerAttackRelease("8n", time);
   }
 
   setupRenderer() {
@@ -226,6 +246,9 @@ class Main {
     // console.log(this.pane);
     const shadowFolder = this.pane.addFolder({ title: 'LIGHT / SHADOW' });
     const self = this
+    self.pane.addBinding(self.params.sound, 'vol' , { min: -40, max: 0 }).on('change', (e) => {
+      Tone.Destination.volume.value = e.value;
+    });
     self.pane.addBinding(self.params.all, 'enabled').on('change', (e) => {
       self.spotLights.forEach(function (light, index) {
         self.params[`l${index}`].enabled = e.value;
