@@ -126,10 +126,12 @@ class Main {
       clearTimeout(mouseMoveTimeout)
       const uiDom = document.querySelector('.ui')
       uiDom.classList.add("show")
+      this.target.material.side = THREE.DoubleSide
       mouseMoveTimeout = setTimeout(() => {
         const uiDom = document.querySelector('.ui')
+        this.target.material.side = THREE.BackSide
         uiDom.classList.remove("show")
-      }, 1500)
+      }, 3000)
     })
 
 
@@ -396,7 +398,7 @@ class Main {
     }else{
       this.params.camera.x = Math.random() * 100 - 50
       this.params.camera.y = Math.random() * 100 - 50
-      if(Math.random > .4){
+      if(Math.random() > .4){
         this.params.camera.z = Math.random() * 150
       }else{
         this.params.camera.z = 20
@@ -550,7 +552,7 @@ class Main {
 
   createTarget() {
     const texture = new THREE.TextureLoader().load(logo);
-    const geo = new THREE.PlaneGeometry(500, 500, 1, 1);
+    const geo = new THREE.PlaneGeometry(5, 5, 1, 1);
     const mat = new THREE.MeshStandardMaterial({
       map: texture,
       alphaTest: .2,
@@ -564,7 +566,6 @@ class Main {
     this.target.name = "target"
     this.target.castShadow = true;
     this.target.position.set(0, 0, 0)
-    this.target.scale.set(.01, .01, .01)
     this.scene.add(this.target);
   }
 
