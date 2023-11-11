@@ -14,13 +14,12 @@ class Main {
     this.height = window.innerHeight
     this.renderer = new THREE.WebGLRenderer({
       canvas: $.qs('canvas'),
-      antialias: true,
-      alpha: true,
+      
     })
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // this.renderer.clearColor(0x000000, 1);
+    this.renderer.clearColor(0x000000, 1);
     this.scene = new THREE.Scene()
     this.camera = new THREE.PerspectiveCamera(
       45,
@@ -32,7 +31,17 @@ class Main {
 
     this.params = {
       sound: {
-        vol: -30,
+        vol: -20,
+        reverb: 0,
+        type: 'sine',
+        delay: 0,
+        attack: 0.001,
+        bitCrusher: 0,
+      },
+      camera: {
+        x: 0,
+        y: 0,
+        z: 20,
       },
       all: {
         enabled: true,
@@ -73,13 +82,16 @@ class Main {
 
     window.params = this.params
 
+    this.backPos = new THREE.Vector3(0, 0, -10);
     this.spotLights = [];
     this.target = new THREE.Mesh()
     this.back = new THREE.Mesh()
     this.isdebug = false;
     this.helper = new THREE.Group();
 
-    this.pane = new Pane();
+    this.pane = new Pane({
+      container: document.querySelector('.ui .tweakpane')
+    });
 
     // document.body.appendChild(this.renderer.domElement);
     $.addEvent(window, 'resize', this.resize.bind(this))
@@ -90,7 +102,9 @@ class Main {
         this.controls.enabled = this.isdebug
         if (!this.isdebug) {
           this.controls.reset();
-          this.camera.position.set(0, 0, 20);
+          this.params.camera.x = this.camera.position.x
+          this.params.camera.y = this.camera.position.y
+          this.params.camera.z = this.camera.position.z
         }
       }
     })
@@ -101,85 +115,185 @@ class Main {
       this.loopStart()
     })
 
+    $.addEvent(".stop", 'click', () => {
+      Tone.Transport.stop();
+      this.loopStop()
+    });
+
+    let mouseMoveTimeout = null 
+
+    $.addEvent(window,"mousemove", (e) => {
+      clearTimeout(mouseMoveTimeout)
+      const uiDom = document.querySelector('.ui')
+      uiDom.classList.add("show")
+      mouseMoveTimeout = setTimeout(() => {
+        const uiDom = document.querySelector('.ui')
+        uiDom.classList.remove("show")
+      }, 1500)
+    })
+
 
   }
 
   init() {
     this.setupRenderer()
     this.setupCamera()
-    // this.renderer.setAnimationLoop(this.update.bind(this))
+    this.renderer.setAnimationLoop(this.update.bind(this))
     this.createLights()
     this.createTarget()
     this.createBack()
     this.createHelper()
-    this.createControls()
+    // this.createControls()
     this.createTweakPane()
     // this.createCube(0, 0, 0, 1)
   }
 
   createSound() {
-    
-    // エンベロープを作成
-    this.os1env = new Tone.AmplitudeEnvelope({
-      "attack": 0,
-      "decay": 0.5,
-      "sustain": 0.2,
-      "release": .8
-    }).toDestination();
-
-    this.os2env = new Tone.AmplitudeEnvelope({
-      "attack": 0,
-      "decay": 0.2,
-      "sustain": 0.2,
-      "release": .1
-    }).toDestination();
-
 
     // オシレーターを作成してエンベロープに接続
-    this.oscillators = []
-    this.oscillators1 = new Tone.Oscillator(440, "sine").connect(this.os1env)
-    this.oscillators2 = new Tone.Oscillator(400, "sine").connect(this.os2env)
 
+    this.synth1 = new Tone.Synth({
+      oscillator : {
+        type : this.params.sound.type
+      },
+      envelope : {
+        attack : this.params.sound.attack ,
+        decay : 0.5 ,
+        sustain : 0.1 ,
+        release : .2
+      }
+    }).toDestination();
+
+    this.synth2 = new Tone.Synth({
+      oscillator : {
+        type : this.params.sound.type
+      },
+      envelope : {
+        attack : this.params.sound.attack ,
+        decay : 0.1 ,
+        sustain : 0.8 ,
+        release : .8
+      }
+    }).toDestination();
+
+
+    this.s1Melo0 = [
+      "C5",,,,
+    ]
+    this.s1Melo1 = [
+      ,,"C#5",,
+    ]
+    this.s1Melo2 = [
+      "C#5",,"B5",,
+      "C#5","B5",,"B5",
+      "C#5","B5",,,
+      "C#5",,"B5",,
+    ]
+    this.s1Melo3 = [
+      ,"C#4",,,
+      "E4",,,,
+      ,,,,
+      "E4",,"E5","E4",
+    ]
+    this.s1Melo4 = [
+      ,"C#5","B5",,
+      "E6","B5","C#5",,
+      "E6","B5","C#5",,
+      "E6","B5","C#5",,
+    ]
+    this.s1Melo5 = [
+      ,,"C#4",,
+      "B4",,"C#4",,
+      ,,"C#4",,
+      ,,,,
+    ]
+
+    this.s2Melo0 = [
+      ,,,,
+    ]
+
+    this.s2Melo1 = [
+      "C#3",,,,
+    ]
+    this.s2Melo2 = [
+      ,,"C3",,
+    ]
+
+    this.s2Melo3 = [
+      "C#3",,,,
+      "C#3","F#3",,"C#3",
+      ,,"C#3",,
+      ,"C#3",,,
+    ]
     
-    this.melo0 = [
-      1,1,2,1,
-      1,1,2,1,
-      1,1,2,1,
-      2,1,2,2
+
+    this.s1MeloArr = [
+      this.s1Melo0,
+      this.s1Melo1,
+      this.s1Melo2,
+      this.s1Melo3,
+      this.s1Melo4,
+      this.s1Melo5,
+    ]
+    this.s2MeloArr = [
+      this.s2Melo0,
+      this.s2Melo1,
+      this.s2Melo2,
+      this.s2Melo3,
     ]
 
-    this.meloArr = [
-      this.melo0
-    ]
+    this.s1NowMeloNum = 0
+    this.s2NowMeloNum = 0
 
-    this.nowMeloNum = 0
+
+    this.bitCrusher = new Tone.BitCrusher(4).toDestination();
+    this.bitCrusher.wet.value = this.params.sound.bitCrusher
+    this.synth1.connect(this.bitCrusher);
+    this.synth2.connect(this.bitCrusher);
+
+    this.pingpong = new Tone.PingPongDelay("16n", 0.8).toDestination();
+    this.pingpong.wet.value = this.params.sound.delay
+    this.bitCrusher.connect(this.pingpong);
+
+    this.reverb = new Tone.Reverb(this.params.sound.reverb).toDestination();
+    this.pingpong.connect(this.reverb);
+
+
 
     this.count = 0
     this.lCount = 0
     this.loop = new Tone.Loop((time) => {
-      // triggered every eighth note.
-      console.log(time)
-      // 各オシレーターの音を停止
-      this.oscillators1.stop(time);
-      this.oscillators2.stop(time);
+      // console.log(time)
 
-      if(this.meloArr[this.nowMeloNum][this.count] == 1){
-        this.playSound1(time)
-      }else if(this.meloArr[this.nowMeloNum][this.count] == 2){
-        this.playSound2(time)
+      const length1 = this.s1MeloArr[this.s1NowMeloNum].length
+      let lightFlg = false
+      const note1 = this.s1MeloArr[this.s1NowMeloNum][this.count%length1]
+      if(note1){
+        this.playSynth1(note1,time)
+        lightFlg = true
       }
+
+      const length2 = this.s2MeloArr[this.s2NowMeloNum].length
+      console.log(this.count%length2);
+      const note2 = this.s2MeloArr[this.s2NowMeloNum][this.count%length2]
+      if(note2){
+        this.playSynth2(note2,time)
+      }
+      this.count++
 
       self = this
 
       self.spotLights.forEach(function (light, index) {
         self.params[`l${index}`].enabled = false
       })
-      this.params[`l${this.lCount}`].enabled = true
+      if(lightFlg){
+        this.params[`l${this.lCount}`].enabled = true
+      }
 
-      if(this.count == this.meloArr[this.nowMeloNum].length - 1){
-        this.count = 0
-      }else{
-        this.count++
+      if(this.count%64 == 0){
+        this.s1NowMeloNum = Math.floor(Math.random() * this.s1MeloArr.length)
+        this.s2NowMeloNum = Math.floor(Math.random() * this.s2MeloArr.length)
+        this.randomParam()
       }
 
       if(this.lCount == 8){
@@ -187,8 +301,8 @@ class Main {
       }else{
         this.lCount++
       }
-    }, "8n")
-    Tone.Transport.bpm.value = 160;
+    }, "16n")
+    Tone.Transport.bpm.value = 140;
     Tone.Destination.volume.value = this.params.sound.vol;
 
     // this.loopStart()
@@ -199,14 +313,16 @@ class Main {
     this.loop.start(0)
   }
 
-  playSound1(time) {
-    this.oscillators1.start(time);
-    this.os1env.triggerAttackRelease("8n", time);
+  loopStop() {
+    this.loop.stop(0)
   }
 
-  playSound2(time) {
-    this.oscillators2.start(time);
-    this.os2env.triggerAttackRelease("8n", time);
+  playSynth1(note,time) {
+    this.synth1.triggerAttackRelease(note, "16n",time);
+  }
+
+  playSynth2(note,time) {
+    this.synth2.triggerAttackRelease(note, "16n",time);
   }
 
   setupRenderer() {
@@ -214,8 +330,12 @@ class Main {
   }
 
   setupCamera() {
-    this.camera.position.set(0, 0, 20);
-    // this.camera.lookAt(new THREE.Vector3(0, 0, 0));
+    this.camera.position.set(
+      this.params.camera.x,
+      this.params.camera.y,
+      this.params.camera.z
+    );
+    this.camera.lookAt(this.backPos);
     // this.camera.updateProjectionMatrix();
     // this.scene.add(this.camera);
   }
@@ -241,70 +361,132 @@ class Main {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
   }
 
+  randomParam() {
+    this.params.sound.reverb = Math.random() * 50
+    this.params.sound.delay = Math.random()
+    this.params.sound.type = ['sine', 'square', 'sawtooth', 'triangle'][Math.floor(Math.random() * 4)]
+    this.params.sound.attack = Math.random()
+    this.params.sound.bitCrusher = Math.random()
+    console.log(this.params.sound);
+
+    if(this.params.sound.type == 'sawtooth'){
+      this.params.all.decay = 0.1
+    }else if(this.params.sound.type == 'triangle'){
+      this.params.all.decay = 1
+    }else if(this.params.sound.type == 'square'){
+      this.params.all.decay = 0.5
+    }else if(this.params.sound.type == 'sine'){
+      this.params.all.decay = 2
+    }
+
+    this.params.all.angle = Math.random() * 1.5 + .2
+
+    this.params.all.penumbra = this.params.sound.reverb / 50
+
+    if(this.params.sound.delay > 0.8){
+      this.params.all.intensity = this.params.sound.delay * 1000
+    }
+    
+    this.params.all.spacing = Math.random() * 20
+
+    if(Math.random() > .7){
+      this.params.camera.x = 0
+      this.params.camera.y = 0
+      this.params.camera.z = 20
+    }else{
+      this.params.camera.x = Math.random() * 100 - 50
+      this.params.camera.y = Math.random() * 100 - 50
+      if(Math.random > .4){
+        this.params.camera.z = Math.random() * 150
+      }else{
+        this.params.camera.z = 20
+      }
+    }
+    
+    this.camera.lookAt(this.backPos);
+
+  }
+
   createTweakPane() {
 
+    window.params = this.params
     // console.log(this.pane);
-    const shadowFolder = this.pane.addFolder({ title: 'LIGHT / SHADOW' });
+    const lightFolder = this.pane.addFolder({ title: 'LIGHTS' });
+
+    const soundFolder = this.pane.addFolder({ title: 'Sound' });
     const self = this
-    self.pane.addBinding(self.params.sound, 'vol' , { min: -40, max: 0 }).on('change', (e) => {
+    soundFolder.addBinding(self.params.sound, 'vol' , { min: -40, max: 0 }).on('change', (e) => {
       Tone.Destination.volume.value = e.value;
     });
-    self.pane.addBinding(self.params.all, 'enabled').on('change', (e) => {
+    soundFolder.addBinding(self.params.sound, 'reverb' , { min: 0, max: 50 }).on('change', (e) => {
+      this.reverb.decay = e.value;
+    });
+    soundFolder.addBinding(self.params.sound, 'type' , { options: { sine: 'sine', square: 'square', sawtooth: 'sawtooth', triangle: 'triangle' } }).on('change', (e) => {
+      this.synth1.oscillator.type = e.value;
+      this.synth2.oscillator.type = e.value;
+    });
+    soundFolder.addBinding(self.params.sound, 'delay' , { min: 0, max: 1 }).on('change', (e) => {
+      this.pingpong.wet.value = e.value;
+    });
+    soundFolder.addBinding(self.params.sound, 'attack' , { min: 0.001, max: 1 }).on('change', (e) => {
+      this.synth1.envelope.attack = e.value;
+      this.synth2.envelope.attack = e.value;
+    });
+    soundFolder.addBinding(self.params.sound, 'bitCrusher' , { min: 0, max: 1 }).on('change', (e) => {
+      this.bitCrusher.wet.value = e.value;
+    });
+
+    const cameraFolder = this.pane.addFolder({ title: 'Camera' });
+    cameraFolder.addBinding(self.params.camera, 'x' , { min: -100, max: 100 }).on('change', (e) => {
+      this.camera.position.x = e.value;
+      this.camera.lookAt(this.backPos);
+    })
+    cameraFolder.addBinding(self.params.camera, 'y' , { min: -100, max: 100 }).on('change', (e) => {
+      this.camera.position.y = e.value;
+      this.camera.lookAt(this.backPos);
+    })
+    cameraFolder.addBinding(self.params.camera, 'z' , { min: 20, max: 150 }).on('change', (e) => {
+      this.camera.position.z = e.value;
+      this.camera.lookAt(this.backPos);
+    })
+
+    const allLightFolder = this.pane.addFolder({ title: 'LIGHT SETTINGS' });
+    allLightFolder.addBinding(self.params.all, 'enabled').on('change', (e) => {
       self.spotLights.forEach(function (light, index) {
         self.params[`l${index}`].enabled = e.value;
       });
 
     });
-    self.pane.addBinding(self.params.all, 'intensity', { min: 0, max: 1000 }).on('change', (e) => {
+    allLightFolder.addBinding(self.params.all, 'intensity', { min: 0, max: 1000 }).on('change', (e) => {
       self.spotLights.forEach(function (light, index) {
         light.intensity = e.value;
       });
     });
-    self.pane.addBinding(self.params.all, 'angle', { min: 0, max: 1.5 }).on('change', (e) => {
+    allLightFolder.addBinding(self.params.all, 'angle', { min: 0, max: 1.5 }).on('change', (e) => {
       self.spotLights.forEach(function (light, index) {
         light.angle = e.value;
       });
     }
     );
-    self.pane.addBinding(self.params.all, 'penumbra', { min: 0, max: 1 }).on('change', (e) => {
+    allLightFolder.addBinding(self.params.all, 'penumbra', { min: 0, max: 1 }).on('change', (e) => {
       self.spotLights.forEach(function (light, index) {
         light.penumbra = e.value;
       });
     });
-    self.pane.addBinding(self.params.all, 'decay', { min: 0, max: 4 }).on('change', (e) => {
+    allLightFolder.addBinding(self.params.all, 'decay', { min: 0, max: 4 }).on('change', (e) => {
       self.spotLights.forEach(function (light, index) {
         light.decay = e.value;
       });
     });
-    self.pane.addBinding(self.params.all, 'spacing', { min: 0, max: 20 }).on('change', (e) => {
+    allLightFolder.addBinding(self.params.all, 'spacing', { min: 0, max: 20 }).on('change', (e) => {
       self.setLightPosition(e.value, 3, 3)
     });
 
     // 影のパラメーターをUIコントロールに追加
     this.spotLights.forEach(function (light, index) {
-      var lightFolder = shadowFolder.addFolder({ title: 'Light ' + index });
-      // console.log(self.params);
-      lightFolder.addBinding(self.params[`l${index}`], 'enabled').on('change', (e) => { e.value ? self.lightOn(index) : self.lightOff(index) });
-      // self.pane.addBinding(self.params, `l${index}.enabled`).on('change', (e) => { e.value ? self.lightOn(light) : self.lightOff(light) });
-
-      // lightFolder.addBinding(light.shadow.camera, 'near', { min: 1, max: 10 }).on('change', self.updateLights);
-      // lightFolder.addBinding(light.shadow.camera, 'far', { min: 10, max: 100 }).on('change', self.updateLights);
-      // lightFolder.addBinding(light.shadow.camera, 'left', { min: -10, max: 10 }).on('change', self.updateLights);
-      // lightFolder.addBinding(light.shadow.camera, 'right', { min: -10, max: 10 }).on('change', self.updateLights);
-      // lightFolder.addBinding(light.shadow.camera, 'top', { min: -10, max: 10 }).on('change', self.updateLights);
-      // lightFolder.addBinding(light.shadow.camera, 'bottom', { min: -10, max: 10 }).on('change', self.updateLights);
+      var lFolder = lightFolder.addFolder({ title: 'Light ' + index });
+      lFolder.addBinding(self.params[`l${index}`], 'enabled').on('change', (e) => { e.value ? self.lightOn(index) : self.lightOff(index) });
     });
-    // const PARAMS = {
-    //   factor: 123,
-    //   title: 'hello',
-    //   color: '#ff0055',
-    // };
-
-    // // const pane = new this.pane();
-
-    // this.pane.addBinding(PARAMS, 'factor');
-    // this.pane.addBinding(PARAMS, 'title');
-    // this.pane.addBinding(PARAMS, 'color');
   }
 
   lightOn(id) {
@@ -345,7 +527,7 @@ class Main {
         spotLight.distance = 0;
 
         spotLight.castShadow = true;
-        spotLight.shadow.camera.far = 1000;
+        spotLight.shadow.camera.far = 10000;
         spotLight.shadow.mapSize.width = 1024;
         spotLight.shadow.mapSize.height = 1024;
 
@@ -387,7 +569,7 @@ class Main {
   }
 
   createBack() {
-    this.back.geometry = new THREE.PlaneGeometry(2000, 2000, 1, 1)
+    this.back.geometry = new THREE.PlaneGeometry(5000, 5000, 1, 1)
     this.back.material = new THREE.MeshStandardMaterial({
       color: 0xFFFFFF,
     })

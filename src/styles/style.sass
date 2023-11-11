@@ -1,6 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap')
+$white:#fff
+$blue:#00f
 html, body
   min-height: 100%
   height: auto
+  font-antialiasing: antialiased
+  font-family: 'Space Mono', monospace
 
 #app
   canvas
@@ -37,5 +42,23 @@ html, body
     left: 40px
     z-index: 1
     
-.tp-dfwv
-  z-index: 1000
+.ui
+  opacity: 0
+  .buttons
+    position: absolute
+    bottom: 20px
+    left: 20px
+    button
+      border: 1px solid $white
+      color: $white
+      font-size: 15px
+      padding: 5px 20px
+      background: transparent
+      cursor: pointer
+  &.show
+    opacity: 1
+  .tweakpane
+    position: absolute
+    z-index: 1000
+    right: 0
+    top: 0
