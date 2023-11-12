@@ -37,6 +37,7 @@ class Main {
         delay: 0,
         attack: 0.001,
         bitCrusher: 0,
+        random: true,
       },
       camera: {
         x: 0,
@@ -52,31 +53,31 @@ class Main {
         spacing: 10,
       },
       l0: {
-        enabled: true,
+        enabled: "",
       },
       l1: {
-        enabled: true,
+        enabled: "",
       },
       l2: {
-        enabled: true,
+        enabled: "",
       },
       l3: {
-        enabled: true,
+        enabled: "",
       },
       l4: {
-        enabled: true,
+        enabled: "",
       },
       l5: {
-        enabled: true,
+        enabled: "",
       },
       l6: {
-        enabled: true,
+        enabled: "",
       },
       l7: {
-        enabled: true,
+        enabled: "",
       },
       l8: {
-        enabled: true,
+        enabled: "",
       },
     }
 
@@ -178,32 +179,35 @@ class Main {
       }
     }).toDestination();
 
-
     this.s1Melo0 = [
+      ,,,,
+    ]
+
+    this.s1Melo1 = [
       "C5",,,,
     ]
-    this.s1Melo1 = [
+    this.s1Melo2 = [
       ,,"C#5",,
     ]
-    this.s1Melo2 = [
+    this.s1Melo3 = [
       "C#5",,"B5",,
       "C#5","B5",,"B5",
       "C#5","B5",,,
       "C#5",,"B5",,
     ]
-    this.s1Melo3 = [
+    this.s1Melo4 = [
       ,"C#4",,,
       "E4",,,,
       ,,,,
       "E4",,"E5","E4",
     ]
-    this.s1Melo4 = [
+    this.s1Melo5 = [
       ,"C#5","B5",,
       "E6","B5","C#5",,
       "E6","B5","C#5",,
       "E6","B5","C#5",,
     ]
-    this.s1Melo5 = [
+    this.s1Melo6 = [
       ,,"C#4",,
       "B4",,"C#4",,
       ,,"C#4",,
@@ -236,6 +240,7 @@ class Main {
       this.s1Melo3,
       this.s1Melo4,
       this.s1Melo5,
+      this.s1Melo6,
     ]
     this.s2MeloArr = [
       this.s2Melo0,
@@ -244,23 +249,19 @@ class Main {
       this.s2Melo3,
     ]
 
-    this.s1NowMeloNum = 0
+    this.s1NowMeloNum = 1
     this.s2NowMeloNum = 0
 
 
-    this.bitCrusher = new Tone.BitCrusher(4).toDestination();
-    this.bitCrusher.wet.value = this.params.sound.bitCrusher
-    this.synth1.connect(this.bitCrusher);
-    this.synth2.connect(this.bitCrusher);
-
+    window.t1 = this
+    
     this.pingpong = new Tone.PingPongDelay("16n", 0.8).toDestination();
     this.pingpong.wet.value = this.params.sound.delay
-    this.bitCrusher.connect(this.pingpong);
+    this.synth1.connect(this.pingpong);
+    this.synth2.connect(this.pingpong);
 
     this.reverb = new Tone.Reverb(this.params.sound.reverb).toDestination();
     this.pingpong.connect(this.reverb);
-
-
 
     this.count = 0
     this.lCount = 0
@@ -268,33 +269,45 @@ class Main {
       // console.log(time)
 
       const length1 = this.s1MeloArr[this.s1NowMeloNum].length
-      let lightFlg = false
+      let light1Flg = false
       const note1 = this.s1MeloArr[this.s1NowMeloNum][this.count%length1]
       if(note1){
         this.playSynth1(note1,time)
-        lightFlg = true
+        light1Flg = true
       }
 
       const length2 = this.s2MeloArr[this.s2NowMeloNum].length
-      console.log(this.count%length2);
+      let light2Flg = false
       const note2 = this.s2MeloArr[this.s2NowMeloNum][this.count%length2]
       if(note2){
         this.playSynth2(note2,time)
+        light2Flg = true
       }
       this.count++
 
       self = this
 
       self.spotLights.forEach(function (light, index) {
-        self.params[`l${index}`].enabled = false
+        self.params[`l${index}`].enabled = ""
       })
-      if(lightFlg){
-        this.params[`l${this.lCount}`].enabled = true
+      if(light1Flg){
+        this.params[`l${this.lCount}`].enabled = "lead"
+      }else{
+        if(light2Flg){
+          this.params[`l${this.lCount}`].enabled = "bass"
+        }
       }
 
-      if(this.count%64 == 0){
+      if(this.count%32 == 0 && this.params.sound.random){
         this.s1NowMeloNum = Math.floor(Math.random() * this.s1MeloArr.length)
         this.s2NowMeloNum = Math.floor(Math.random() * this.s2MeloArr.length)
+        if(this.s1NowMeloNum == 0 && this.s2NowMeloNum == 0){
+          if(Math.random() > .5){
+            this.s1NowMeloNum = 1
+          }else{
+            this.s2NowMeloNum = 1
+          }
+        }
         this.randomParam()
       }
 
@@ -367,29 +380,32 @@ class Main {
     this.params.sound.reverb = Math.random() * 50
     this.params.sound.delay = Math.random()
     this.params.sound.type = ['sine', 'square', 'sawtooth', 'triangle'][Math.floor(Math.random() * 4)]
-    this.params.sound.attack = Math.random()
-    this.params.sound.bitCrusher = Math.random()
+    this.params.sound.attack = (Math.random() > .4) ? 0.001 : 0.4
     console.log(this.params.sound);
-
-    if(this.params.sound.type == 'sawtooth'){
-      this.params.all.decay = 0.1
-    }else if(this.params.sound.type == 'triangle'){
-      this.params.all.decay = 1
-    }else if(this.params.sound.type == 'square'){
-      this.params.all.decay = 0.5
-    }else if(this.params.sound.type == 'sine'){
-      this.params.all.decay = 2
-    }
 
     this.params.all.angle = Math.random() * 1.5 + .2
 
     this.params.all.penumbra = this.params.sound.reverb / 50
+    
 
     if(this.params.sound.delay > 0.8){
       this.params.all.intensity = this.params.sound.delay * 1000
     }
     
     this.params.all.spacing = Math.random() * 20
+
+    if(this.params.sound.type == 'sawtooth'){
+      this.params.all.decay = 0.1
+    }else if(this.params.sound.type == 'triangle'){
+      this.params.all.decay = 1.2
+    }else if(this.params.sound.type == 'square'){
+      this.params.all.decay = 0.6
+    }else if(this.params.sound.type == 'sine'){
+      this.params.all.decay = 2
+      this.params.all.angle = 1.5
+    }
+    this.params.all.decay += this.params.sound.attack
+    this.params.all.penumbra += this.params.sound.attack * .4
 
     if(Math.random() > .7){
       this.params.camera.x = 0
@@ -434,9 +450,8 @@ class Main {
       this.synth1.envelope.attack = e.value;
       this.synth2.envelope.attack = e.value;
     });
-    soundFolder.addBinding(self.params.sound, 'bitCrusher' , { min: 0, max: 1 }).on('change', (e) => {
-      this.bitCrusher.wet.value = e.value;
-    });
+
+    soundFolder.addBinding(self.params.sound, 'random')
 
     const cameraFolder = this.pane.addFolder({ title: 'Camera' });
     cameraFolder.addBinding(self.params.camera, 'x' , { min: -100, max: 100 }).on('change', (e) => {
@@ -484,15 +499,15 @@ class Main {
       self.setLightPosition(e.value, 3, 3)
     });
 
-    // 影のパラメーターをUIコントロールに追加
     this.spotLights.forEach(function (light, index) {
       var lFolder = lightFolder.addFolder({ title: 'Light ' + index });
-      lFolder.addBinding(self.params[`l${index}`], 'enabled').on('change', (e) => { e.value ? self.lightOn(index) : self.lightOff(index) });
+      lFolder.addBinding(self.params[`l${index}`], "enabled", { options: { none: '', lead: 'lead', bass: 'bass' } }).on('change', (e) => { e.value ? self.lightOn(index,e.value) : self.lightOff(index) });
     });
   }
 
-  lightOn(id) {
+  lightOn(id,type) {
     const light = this.spotLights[id];
+    light.color = (type == 'lead') ? new THREE.Color(0xffffff) : new THREE.Color(0x0000ff)
     gsap.to(light, {
       intensity: 200,
       duration: .3,
@@ -502,7 +517,7 @@ class Main {
 
   lightOff(id) {
     const light = this.spotLights[id];
-    gsap.to(light, {
+    gsap.to(light, {  
       intensity: 0,
       duration: .3,
       ease: 'back.out',
@@ -520,7 +535,7 @@ class Main {
 
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < cols; j++) {
-        const spotLight = new THREE.SpotLight(0xffffff, this.params.all.intensity);
+        const spotLight = new THREE.SpotLight();
 
         spotLight.castShadow = true;
         spotLight.angle = this.params.all.angle;
